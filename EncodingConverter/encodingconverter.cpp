@@ -9,12 +9,25 @@
 EncodingConverter::EncodingConverter(QWidget* parent)
 	: QMainWindow(parent) {
 	ui.setupUi(this);
-	this->setMaximumSize(this->size());
-	this->setMinimumSize(this->size());
+
 	QFont font;
 	font.setFamily("Consolas");
 	ui.srcDirText->setFont(font);
 	ui.dstDirText->setFont(font);
+	model = new QFileSystemModel();
+	model->setRootPath(QDir::currentPath());
+	selectionModel = new QItemSelectionModel(model);// 与数据模型关联
+	ui.treeView->setModel(model);
+	ui.treeView->setSelectionModel(selectionModel);
+	// ui.treeView->setSelectionMode(QAbstractItemView::MultiSelection);
+	// ui.treeView->setSelectionMode(QAbstractItemView::ContiguousSelection);
+	// 设置多选
+	ui.treeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+	connect(selectionModel, SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)),
+		this, SLOT(when_currentChanged(const QModelIndex&, const QModelIndex&)));
+	connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
+		this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
 }
 
 void EncodingConverter::saveFile(const QString& content, const QString& aFileName) {
@@ -37,8 +50,8 @@ QString EncodingConverter::chooseDir() {
 	QFileDialog chooseDirDlg;
 
 	QString srcDirStr = chooseDirDlg.getExistingDirectory(this,
-	                                                      "选择源文件目录",
-	                                                      QDir::currentPath());
+		"选择源文件目录",
+		QDir::currentPath());
 
 	return srcDirStr;
 }
@@ -52,17 +65,17 @@ void EncodingConverter::setCodec(QTextStream& qTextStream, bool isSrc) {
 	case GBK: {
 		qTextStream.setCodec("GBK");
 	}
-	break;
+			break;
 	case UTF_WITH_BOM: {
 		qTextStream.setCodec("UTF-8");
 		qTextStream.setGenerateByteOrderMark(true); // 带BOM
 	}
-	break;
+					 break;
 	case UTF_8_WITHOUT_BOM: {
 		qTextStream.setCodec("UTF-8");
 		qTextStream.setGenerateByteOrderMark(false);
 	}
-	break;
+						  break;
 	}
 
 }
@@ -86,8 +99,14 @@ void EncodingConverter::on_btnSrcDir_clicked() {
 	// 选择源文件的文件夹
 	ui.srcDirText->clear(); // 清除原来的内容
 	QString srcDirStr = chooseDir();
+	if (srcDirStr.isEmpty())
+		return;
 	ui.srcDirText->setText(srcDirStr);
-
+	// ui.treeView->setModel(model);
+	ui.treeView->setRootIndex(model->index(srcDirStr));
+	// 设置列的宽度
+	for (int i = 0; i < model->columnCount(); ++i)// View中不能够得到列数，需要借助Model的方法
+		ui.treeView->resizeColumnToContents(i);
 }
 
 void EncodingConverter::on_btnDstDir_clicked() {
@@ -115,7 +134,7 @@ void EncodingConverter::on_btnStart_clicked() {
 	QDir srcDir(srcDirStr);
 	QFileInfoList fileInfos = srcDir.entryInfoList(QDir::Files); // 遍历普通文件
 	QListIterator<QFileInfo> ite(fileInfos);
-	ui.textEdit->clear();// 清空原来内容
+	ui.srcPreview->clear();// 清空原来内容
 	while (ite.hasNext()) {
 		const QFileInfo& curFileInfo = ite.next();
 		QString fileName = curFileInfo.fileName();
@@ -131,9 +150,9 @@ void EncodingConverter::on_btnStart_clicked() {
 		setCodec(in, true);
 
 		QString content = in.readAll();
-		ui.textEdit->append(fileName);
-		ui.textEdit->append(content);
-		ui.textEdit->append("------------------------");
+		ui.srcPreview->append(fileName);
+		ui.srcPreview->append(content);
+		ui.srcPreview->append("------------------------");
 
 		saveFile(content, ui.dstDirText->text() + "/" + fileName);
 
@@ -149,4 +168,24 @@ void EncodingConverter::on_cboDstEn_currentIndexChanged(int index) {
 
 void EncodingConverter::on_cboSrcEn_currentIndexChanged(int index) {
 	srcCodec = static_cast<Codec>(ui.cboSrcEn->currentIndex());
+}
+
+void EncodingConverter::when_currentChanged(const QModelIndex& current, const QModelIndex& previous) {
+	qDebug() << "currentChanged()";
+
+	// 使用selectedIndexes会拥有其他信息
+	QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
+	qDebug() << selectedIndexes.count();
+	if (selectedIndexes.count() > 1)
+		return;
+	foreach(const QModelIndex& curModelIndex, selectedIndexes) {
+		qDebug() << model->fileName(curModelIndex);
+	}
+	ui.srcPreview->clear();
+}
+
+void EncodingConverter::when_currentRowChanged(const QModelIndex& current, const QModelIndex& previous) {
+	qDebug() << "currentRowChanged()";
+	QModelIndexList selectedIndexes = selectionModel->selectedRows();
+	qDebug() << selectedIndexes.count();
 }
