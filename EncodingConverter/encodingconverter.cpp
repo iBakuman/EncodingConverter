@@ -1,8 +1,10 @@
 #include "encodingconverter.h"
 #include <QFileDialog>
+#include <QScrollBar>
 #include <QDebug>
 #include <QMessageBox>
 #include <QTextCodec>
+#include <QDir>
 
 #pragma  execution_character_set("utf-8")
 
@@ -12,6 +14,8 @@ EncodingConverter::EncodingConverter(QWidget* parent)
 
 	QFont font;
 	font.setFamily("Consolas");
+	ui.srcPreview->setFontFamily("Consolas");
+	ui.dstPreview->setFontFamily("consolas");
 	ui.srcDirText->setFont(font);
 	ui.dstDirText->setFont(font);
 	model = new QFileSystemModel();
@@ -26,8 +30,9 @@ EncodingConverter::EncodingConverter(QWidget* parent)
 
 	connect(selectionModel, SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)),
 		this, SLOT(when_currentChanged(const QModelIndex&, const QModelIndex&)));
-	connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
-		this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
+	// connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
+	// 	this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
+
 }
 
 void EncodingConverter::saveFile(const QString& content, const QString& aFileName) {
@@ -168,20 +173,40 @@ void EncodingConverter::on_cboDstEn_currentIndexChanged(int index) {
 
 void EncodingConverter::on_cboSrcEn_currentIndexChanged(int index) {
 	srcCodec = static_cast<Codec>(ui.cboSrcEn->currentIndex());
+	QModelIndex curIndex = ui.treeView->currentIndex();
+	srcPreview(model->filePath(curIndex));
 }
 
-void EncodingConverter::when_currentChanged(const QModelIndex& current, const QModelIndex& previous) {
-	qDebug() << "currentChanged()";
+bool EncodingConverter::srcPreview(QString filepath) {
+	QFileInfo fileinfo(filepath);
+	if(!fileinfo.exists() || fileinfo.isDir())// 如果文件不存在或者是目录则跳过
+		return false;
+	
+	QFile aFile(filepath);
 
-	// 使用selectedIndexes会拥有其他信息
-	QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-	qDebug() << selectedIndexes.count();
-	if (selectedIndexes.count() > 1)
-		return;
-	foreach(const QModelIndex& curModelIndex, selectedIndexes) {
-		qDebug() << model->fileName(curModelIndex);
-	}
+	// 清除原来的信息
 	ui.srcPreview->clear();
+	// 使用selectedIndexes会拥有其他信息
+	if(!aFile.open(QIODevice::ReadOnly | QIODevice::Text))
+		return false;// 打开文件失败直接返回
+
+	QTextStream in(&aFile);
+	setCodec(in, true);// 设置源文件字符集
+	ui.srcPreview->append(in.readAll());
+	ui.srcPreview->verticalScrollBar()->setValue(0);// 设置从开头显示
+	aFile.close();// 释放资源
+	return true;
+}
+
+// 选择模型的槽函数，当选择某一个源文件时将文件的内容显示到文本框中预览
+void EncodingConverter::when_currentChanged(const QModelIndex& current, const QModelIndex& previous) {
+	Q_UNUSED(previous);
+	if(!current.isValid())// 不是有效的模型索引的则直接返回
+		return;
+
+	QString filepath = model->filePath(current);// 得到文件路径
+	
+	if (srcPreview(filepath)) return;
 }
 
 void EncodingConverter::when_currentRowChanged(const QModelIndex& current, const QModelIndex& previous) {
