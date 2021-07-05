@@ -11,8 +11,8 @@ class EncodingConverter : public QMainWindow {
 
 public:
 	EncodingConverter(QWidget* parent = Q_NULLPTR);
-	~EncodingConverter() {	// é‡Šæ”¾èµ„æº
-		// ä»¥ä¸‹èµ„æºé‡Šæ”¾é¡ºåºä¸èƒ½é¢ å€’ï¼Œä¸ç„¶é€€å‡ºç¨‹åºæ—¶ç¨‹åºä¼šå´©æºƒ***important
+	~EncodingConverter() {	// ÊÍ·Å×ÊÔ´
+		// ÒÔÏÂ×ÊÔ´ÊÍ·ÅË³Ğò²»ÄÜµßµ¹£¬²»È»ÍË³ö³ÌĞòÊ±³ÌĞò»á±ÀÀ£***important
 		delete selectionModel;
 		delete model;
 	}
@@ -26,11 +26,16 @@ private:
 
 	Codec srcCodec = GBK;
 	Codec dstCodec = GBK;
-	QFileSystemModel* model;// æ•°æ®æ¨¡å‹
-	QItemSelectionModel* selectionModel;// é€‰æ‹©æ¨¡å‹
+	QFileSystemModel* model;// Êı¾İÄ£ĞÍ
+	QItemSelectionModel* selectionModel;// Ñ¡ÔñÄ£ĞÍ
 
 	Ui::EncodingConverterClass ui;
-	void saveFile(const QString& content, const QString& aFileName);
+
+	/*
+	 * ±£´æ×ª»»ºóµÄÎÄ¼ş
+	 * @param content
+	 */
+	bool saveFile(const QString& content, const QString& aFileName);
 	QString chooseDir();
 	void setCodec(QTextStream& qTextStream, bool isSrc);
 
@@ -39,23 +44,25 @@ private slots:
 	void on_actOpenDir_triggered();
 	void on_btnSrcDir_clicked();
 	void on_btnDstDir_clicked();
+	
+	// ×ª»»°´Å¥±»µã»÷Ê±µ÷ÓÃµÄº¯Êı
 	void on_btnStart_clicked();
 	
-	// ç›®æ ‡æ–‡ä»¶ç¼–ç å‘ç”Ÿå˜åŒ–æ—¶è§¦å‘
+	// Ä¿±êÎÄ¼ş±àÂë·¢Éú±ä»¯Ê±´¥·¢
 	void on_cboDstEn_currentIndexChanged(int index);
-	// æºæ–‡ä»¶ç¼–ç å‘ç”Ÿå˜åŒ–æ—¶è§¦å‘
+	// Ô´ÎÄ¼ş±àÂë·¢Éú±ä»¯Ê±´¥·¢
 	void on_cboSrcEn_currentIndexChanged(int index);
 	
-	/* å†…å®¹é¢„è§ˆï¼Œæ‰§è¡ŒæˆåŠŸè¿”å›trueï¼Œåä¹‹è¿”å›false
-	 * @param filePath---æ–‡ä»¶è·¯å¾„
-	 * @param isSrc------æ˜¯å¦æ˜¯æºæ–‡ä»¶é¢„è§ˆï¼Œä¸ºfalseåˆ™è¡¨ç¤ºæ˜¯ç›®æ ‡æ–‡ä»¶é¢„è§ˆ
+	/* ÄÚÈİÔ¤ÀÀ£¬Ö´ĞĞ³É¹¦·µ»Øtrue£¬·´Ö®·µ»Øfalse
+	 * @param filePath---ÎÄ¼şÂ·¾¶
+	 * @param isSrc------ÊÇ·ñÊÇÔ´ÎÄ¼şÔ¤ÀÀ£¬ÎªfalseÔò±íÊ¾ÊÇÄ¿±êÎÄ¼şÔ¤ÀÀ
 	 */
-	bool contentPreview(QString filepath, bool isSrc);
+	bool contentPreview(const QModelIndex& fileIndex, bool isSrc);
 
 	/*
-	 * å½“é€‰æ‹©çš„æ–‡ä»¶å‘ç”Ÿæ”¹å˜æ—¶è¢«è°ƒç”¨çš„æ§½å‡½æ•°                                         
-	 * @param current-----å½“å‰é€‰æ‹©çš„æ–‡ä»¶çš„æ¨¡å‹ç´¢å¼•
-	 * @param previous----ä¸Šä¸€æ¬¡é€‰æ‹©çš„æ–‡ä»¶çš„æ¨¡å‹ç´¢å¼•
+	 * µ±Ñ¡ÔñµÄÎÄ¼ş·¢Éú¸Ä±äÊ±±»µ÷ÓÃµÄ²Ûº¯Êı                                         
+	 * @param current-----µ±Ç°Ñ¡ÔñµÄÎÄ¼şµÄÄ£ĞÍË÷Òı
+	 * @param previous----ÉÏÒ»´ÎÑ¡ÔñµÄÎÄ¼şµÄÄ£ĞÍË÷Òı
 	 */
 	void when_currentRowChanged(const QModelIndex& current, const QModelIndex& previous);
 };
