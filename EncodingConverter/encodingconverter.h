@@ -11,7 +11,7 @@ class EncodingConverter : public QMainWindow {
 
 public:
 	EncodingConverter(QWidget* parent = Q_NULLPTR);
-	~EncodingConverter() {	// ÊÍ·Å×ÊÔ´
+	~EncodingConverter() {	// é‡Šæ”¾èµ„æº
 		delete model;
 		delete selectionModel;
 	}
@@ -25,8 +25,8 @@ private:
 
 	Codec srcCodec = GBK;
 	Codec dstCodec = GBK;
-	QFileSystemModel* model;// Êı¾İÄ£ĞÍ
-	QItemSelectionModel* selectionModel;// Ñ¡ÔñÄ£ĞÍ
+	QFileSystemModel* model;// æ•°æ®æ¨¡å‹
+	QItemSelectionModel* selectionModel;// é€‰æ‹©æ¨¡å‹
 
 	Ui::EncodingConverterClass ui;
 	void saveFile(const QString& content, const QString& aFileName);
@@ -39,11 +39,11 @@ private slots:
 	void on_btnSrcDir_clicked();
 	void on_btnDstDir_clicked();
 	void on_btnStart_clicked();
-	// Ä¿±êÎÄ¼ş±àÂë·¢Éú±ä»¯Ê±´¥·¢
+	// ç›®æ ‡æ–‡ä»¶ç¼–ç å‘ç”Ÿå˜åŒ–æ—¶è§¦å‘
 	void on_cboDstEn_currentIndexChanged(int index);
-	// Ô´ÎÄ¼ş±àÂë·¢Éú±ä»¯Ê±´¥·¢
+	// æºæ–‡ä»¶ç¼–ç å‘ç”Ÿå˜åŒ–æ—¶è§¦å‘
 	void on_cboSrcEn_currentIndexChanged(int index);
-	// Ô´ÎÄ¼şÄÚÈİÔ¤ÀÀ£¬Ö´ĞĞ³É¹¦·µ»Øtrue£¬·´Ö®·µ»Øfalse
+	// æºæ–‡ä»¶å†…å®¹é¢„è§ˆï¼Œæ‰§è¡ŒæˆåŠŸè¿”å›trueï¼Œåä¹‹è¿”å›false
 	bool srcPreview(QString filepath);
 
 	void when_currentChanged(const QModelIndex& current, const QModelIndex& previous);
