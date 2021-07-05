@@ -12,12 +12,13 @@ EncodingConverter::EncodingConverter(QWidget* parent)
 	: QMainWindow(parent) {
 	ui.setupUi(this);
 
-	QFont font;
-	font.setFamily("Consolas");
-	ui.srcPreview->setFontFamily("Consolas");
-	ui.dstPreview->setFontFamily("consolas");
-	ui.srcDirText->setFont(font);
-	ui.dstDirText->setFont(font);
+	// 下面设置字体由main函数中设置全局字体的方法所取代
+	// QFont font;
+	// font.setFamily("Consolas");
+	// ui.srcPreview->setFontFamily("Consolas");
+	// ui.dstPreview->setFontFamily("consolas");
+	// ui.srcDirText->setFont(font);
+	// ui.dstDirText->setFont(font);
 	model = new QFileSystemModel();
 	model->setRootPath(QDir::currentPath());
 	selectionModel = new QItemSelectionModel(model); // 与数据模型关联
@@ -35,7 +36,7 @@ EncodingConverter::EncodingConverter(QWidget* parent)
 	// 使用currentRowChanged信号解决上述问题
 	connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
 		this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
-		
+
 }
 
 void EncodingConverter::saveFile(const QString& content, const QString& aFileName) {
@@ -58,41 +59,40 @@ QString EncodingConverter::chooseDir() {
 	QFileDialog chooseDirDlg;
 
 	QString srcDirStr = chooseDirDlg.getExistingDirectory(this,
-	                                                      "选择源文件目录",
-	                                                      QDir::currentPath());
+		"选择源文件目录",
+		QDir::currentPath());
 
 	return srcDirStr;
 }
 
-// isSrc为true表示给源文件设置编码，反之给目标文件设置编码
+// isSrc为true表示设置读取时编码，反之设置写入时编码
 void EncodingConverter::setCodec(QTextStream& qTextStream, bool isSrc) {
 	Codec tmp = srcCodec;
 	if (!isSrc)
 		tmp = dstCodec;
 	switch (tmp) {
-		case GBK: {
-				qTextStream.setCodec("GBK");
-			}
+	case GBK: {
+		qTextStream.setCodec("GBK");
+	}
 			break;
-		case UTF_WITH_BOM: {
-				qTextStream.setCodec("UTF-8");
-				qTextStream.setGenerateByteOrderMark(true); // 带BOM
-			}
-			break;
-		case UTF_8_WITHOUT_BOM: {
-				qTextStream.setCodec("UTF-8");
-				qTextStream.setGenerateByteOrderMark(false);
-			}
-			break;
+	case UTF_WITH_BOM: {
+		qTextStream.setCodec("UTF-8");
+		qTextStream.setGenerateByteOrderMark(true); // 带BOM
+	}
+					 break;
+	case UTF_8_WITHOUT_BOM: {
+		qTextStream.setCodec("UTF-8");
+		qTextStream.setGenerateByteOrderMark(false);
+	}
+						  break;
 	}
 
 }
 
 
 void EncodingConverter::on_actOpenDir_triggered() {
-	qDebug() << "actOpenDir triggered!";
-
 	QString srcDirStr = chooseDir();
+	
 	if (srcDirStr.isEmpty())
 		return;
 
@@ -172,12 +172,14 @@ void EncodingConverter::on_btnStart_clicked() {
 
 void EncodingConverter::on_cboDstEn_currentIndexChanged(int index) {
 	dstCodec = static_cast<Codec>(ui.cboDstEn->currentIndex());
+	QModelIndex curIndex = ui.treeView->currentIndex();
+	contentPreview(model->filePath(curIndex), false);// 目标文件预览
 }
 
 void EncodingConverter::on_cboSrcEn_currentIndexChanged(int index) {
 	srcCodec = static_cast<Codec>(ui.cboSrcEn->currentIndex());
 	QModelIndex curIndex = ui.treeView->currentIndex();
-	contentPreview(model->filePath(curIndex), true);
+	contentPreview(model->filePath(curIndex), true);// 源文件预览
 }
 
 bool EncodingConverter::contentPreview(QString filepath, bool isSrc) {
@@ -187,29 +189,44 @@ bool EncodingConverter::contentPreview(QString filepath, bool isSrc) {
 
 	QFile aFile(filepath);
 
-	// 清除原来的信息
-	ui.srcPreview->clear();
 	// 使用selectedIndexes会拥有其他信息
 	if (!aFile.open(QIODevice::ReadOnly | QIODevice::Text))
 		return false; // 打开文件失败直接返回
 
 	QTextStream in(&aFile);
-	setCodec(in, true); // 设置源文件字符集
-	ui.srcPreview->append(in.readAll());
-	ui.srcPreview->verticalScrollBar()->setValue(0); // 设置从开头显示
+	setCodec(in, true); // 设置文件字符集
+
+	QTextEdit* targetEdit = nullptr;
+	if (isSrc)
+		targetEdit = ui.srcPreview;
+	else
+		targetEdit = ui.dstPreview;
+
+	int lastPos = targetEdit->verticalScrollBar()->value();// 获得当前滚动条位置
+	// 清除原来的信息
+	targetEdit->clear();
+
+	// 附加内容
+	targetEdit->append(in.readAll());
+	targetEdit->verticalScrollBar()->setValue(lastPos);// 回到上次浏览位置
+	
 	aFile.close(); // 释放资源
 	return true;
 }
 
 // 选择模型的槽函数，当选择某一个源文件时将文件的内容显示到文本框中预览
-
 void EncodingConverter::when_currentRowChanged(const QModelIndex& current, const QModelIndex& previous) {
-	qDebug() << "currentRowChanged()";
 	Q_UNUSED(previous);
-	qDebug() << "currentChanged()";
 	if (!current.isValid()) // 不是有效的模型索引的则直接返回
 		return;
 
 	QString filepath = model->filePath(current); // 得到文件路径
+
+	// 源文件和目标文件同时预览，默认都是GBK编码
 	contentPreview(filepath, true);
+	contentPreview(filepath, false);
+
+	// 设置从开头显示
+	ui.srcPreview->verticalScrollBar()->setValue(0); 
+	ui.dstPreview->verticalScrollBar()->setValue(0);
 }

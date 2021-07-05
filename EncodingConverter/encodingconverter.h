@@ -52,7 +52,7 @@ private slots:
 	bool contentPreview(QString filepath, bool isSrc);
 
 	/*
-	 * 当选择的文件发生改变时触发的信号                                         
+	 * 当选择的文件发生改变时被调用的槽函数                                         
 	 * @param current-----当前选择的文件的模型索引
 	 * @param previous----上一次选择的文件的模型索引
 	 */
