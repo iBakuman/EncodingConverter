@@ -12,8 +12,9 @@ class EncodingConverter : public QMainWindow {
 public:
 	EncodingConverter(QWidget* parent = Q_NULLPTR);
 	~EncodingConverter() {	// 释放资源
-		delete model;
+		// 以下资源释放顺序不能颠倒，不然退出程序时程序会崩溃***important
 		delete selectionModel;
+		delete model;
 	}
 
 private:

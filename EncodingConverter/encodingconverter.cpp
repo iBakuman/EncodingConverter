@@ -12,28 +12,15 @@ EncodingConverter::EncodingConverter(QWidget* parent)
 	: QMainWindow(parent) {
 	ui.setupUi(this);
 
-	// 下面设置字体由main函数中设置全局字体的方法所取代
-	// QFont font;
-	// font.setFamily("Consolas");
-	// ui.srcPreview->setFontFamily("Consolas");
-	// ui.dstPreview->setFontFamily("consolas");
-	// ui.srcDirText->setFont(font);
-	// ui.dstDirText->setFont(font);
 	model = new QFileSystemModel();
 	model->setRootPath(QDir::currentPath());
 	selectionModel = new QItemSelectionModel(model); // 与数据模型关联
 	ui.treeView->setModel(model);
 	ui.treeView->setSelectionModel(selectionModel);
-	// ui.treeView->setSelectionMode(QAbstractItemView::MultiSelection);
-	// ui.treeView->setSelectionMode(QAbstractItemView::ContiguousSelection);
+
 	// 设置多选
 	ui.treeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-	// 使用currentChanged信号导致点击文件大小属性等在一行内的属性时也会刷新预览内容
-	// connect(selectionModel, SIGNAL(currentChanged(const QModelIndex&, const QModelIndex&)),
-	//         this, SLOT(when_currentChanged(const QModelIndex&, const QModelIndex&)));
-
-	// 使用currentRowChanged信号解决上述问题
 	connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
 		this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
 
