@@ -13,47 +13,62 @@ EncodingConverter::EncodingConverter(QWidget* parent)
     ui.setupUi(this);
 
     model = new QFileSystemModel();
+
     model->setRootPath(QDir::currentPath());
-    selectionModel = new QItemSelectionModel(model); // ÓëÊı¾İÄ£ĞÍ¹ØÁª
+    selectionModel = new QItemSelectionModel(model); // ä¸æ•°æ®æ¨¡å‹å…³è”
     ui.treeView->setModel(model);
     ui.treeView->setSelectionModel(selectionModel);
 
-    // ÉèÖÃ¶àÑ¡
+    // è®¾ç½®å¤šé€‰
     ui.treeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     connect(selectionModel, SIGNAL(currentRowChanged(const QModelIndex&, const QModelIndex&)),
             this, SLOT(when_currentRowChanged(const QModelIndex&, const QModelIndex&)));
-
 }
 
-bool EncodingConverter::saveFile(const QString& content, const QString& aFileName) {
-    if (aFileName.isEmpty())
-        return false;
-    QFile aFile(aFileName);
 
-    if (!aFile.exists() || !aFile.open(QIODevice::WriteOnly | QIODevice::Text))
+bool EncodingConverter::saveFile(const QModelIndex& fileIndex, const QString& savePath) {
+    if (model->isDir(fileIndex) || !fileIndex.isValid()) {
+        // ç›®å½•ä¸éœ€è¦è½¬æ¢
+        return false;
+    }
+
+    QFile rFile(model->filePath(fileIndex));
+    if (!rFile.exists() | !rFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false; // å¦‚æœæ–‡ä»¶æ‰“å¼€å¤±è´¥æˆ–è€…æ–‡ä»¶ä¸å­˜åœ¨åˆ™è·³è¿‡
+    }
+
+    // è·å¾—ä¿å­˜æ–‡ä»¶çš„ç»å¯¹è·¯å¾„
+    QString nameToSave = savePath + "/" + model->fileName(fileIndex);
+    QFile wFile(nameToSave);
+    if (!wFile.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
 
-    QTextStream out(&aFile);
-    setCodec(out, false);
-    out << content;
-    aFile.close();
+    QTextStream in(&rFile);
+    setCodec(in, true); // è®¾ç½®è¾“å…¥ç¼–ç 
+    QString srcContext = in.readAll(); // è·å¾—æºæ–‡ä»¶å†…å®¹
+
+    QTextStream out(&wFile);
+    setCodec(out, false); // è®¾ç½®è¾“å‡ºç¼–ç 
+    out << srcContext; // å†™å…¥æ–‡ä»¶
+
+    rFile.close();
+    wFile.close();
     return true;
-
 }
 
-// ´ò¿ªÄ¿Â¼£¬·µ»ØÄ¿Â¼µÄÂ·¾¶
+// æ‰“å¼€ç›®å½•ï¼Œè¿”å›ç›®å½•çš„è·¯å¾„
 QString EncodingConverter::chooseDir() {
     QFileDialog chooseDirDlg;
 
     QString srcDirStr = chooseDirDlg.getExistingDirectory(this,
-                                                          "Ñ¡ÔñÔ´ÎÄ¼şÄ¿Â¼",
+                                                          "é€‰æ‹©æºæ–‡ä»¶ç›®å½•",
                                                           QDir::currentPath());
 
     return srcDirStr;
 }
 
-// isSrcÎªtrue±íÊ¾ÉèÖÃ¶ÁÈ¡Ê±±àÂë£¬·´Ö®ÉèÖÃĞ´ÈëÊ±±àÂë
+// isSrcä¸ºtrueè¡¨ç¤ºè®¾ç½®è¯»å–æ—¶ç¼–ç ï¼Œåä¹‹è®¾ç½®å†™å…¥æ—¶ç¼–ç 
 void EncodingConverter::setCodec(QTextStream& qTextStream, bool isSrc) {
     Codec tmp = srcCodec;
     if (!isSrc)
@@ -65,7 +80,7 @@ void EncodingConverter::setCodec(QTextStream& qTextStream, bool isSrc) {
         }
         case UTF_WITH_BOM: {
             qTextStream.setCodec("UTF-8");
-            qTextStream.setGenerateByteOrderMark(true); // ´øBOM
+            qTextStream.setGenerateByteOrderMark(true); // å¸¦BOM
             break;
         }
         case UTF_8_WITHOUT_BOM: {
@@ -91,68 +106,97 @@ void EncodingConverter::on_actOpenDir_triggered() {
 }
 
 void EncodingConverter::on_btnSrcDir_clicked() {
-    // Ñ¡ÔñÔ´ÎÄ¼şµÄÎÄ¼ş¼Ğ
+    // é€‰æ‹©æºæ–‡ä»¶çš„æ–‡ä»¶å¤¹
 
     QString srcDirStr = chooseDir();
     if (srcDirStr.isEmpty())
         return;
-    // 1.ĞŞ¸´ÁËÎ´Ñ¡ÔñÎÄ¼ş¼ĞÊ±Çå¿ÕÁËÔ­À´µÄÂ·¾¶ÒÔ¼°ÄÚÈİÔ¤ÀÀµÄÎÊÌâ***important
-    ui.srcDirText->clear(); // Çå³ıÔ­À´µÄÄÚÈİ
+    // 1.ä¿®å¤äº†æœªé€‰æ‹©æ–‡ä»¶å¤¹æ—¶æ¸…ç©ºäº†åŸæ¥çš„è·¯å¾„ä»¥åŠå†…å®¹é¢„è§ˆçš„é—®é¢˜***important
+    ui.srcDirText->clear(); // æ¸…é™¤åŸæ¥çš„å†…å®¹
     ui.srcPreview->clear();
     ui.dstPreview->clear();
     ui.srcDirText->setText(srcDirStr);
 
-    // ÉèÖÃ¸ùÄ¿Â¼
+    // è®¾ç½®æ ¹ç›®å½•
     ui.treeView->setRootIndex(model->index(srcDirStr));
-    // ÉèÖÃÁĞµÄ¿í¶È¸ù¾İÄÚÈİµ÷Õû
-    for (int i = 0; i < model->columnCount(); ++i) // ViewÖĞ²»ÄÜ¹»µÃµ½ÁĞÊı£¬ĞèÒª½èÖúModelµÄ·½·¨
+    // è®¾ç½®åˆ—çš„å®½åº¦æ ¹æ®å†…å®¹è°ƒæ•´
+    for (int i = 0; i < model->columnCount(); ++i) // Viewä¸­ä¸èƒ½å¤Ÿå¾—åˆ°åˆ—æ•°ï¼Œéœ€è¦å€ŸåŠ©Modelçš„æ–¹æ³•
         ui.treeView->resizeColumnToContents(i);
 }
 
 void EncodingConverter::on_btnDstDir_clicked() {
-    ui.dstDirText->clear(); // Çå³ıÔ­À´µÄÄÚÈİ
+    ui.dstDirText->clear(); // æ¸…é™¤åŸæ¥çš„å†…å®¹
     QString srcDirStr = chooseDir();
     ui.dstDirText->setText(srcDirStr);
 }
 
-// ¿ªÊ¼×ª»»
+// å¼€å§‹è½¬æ¢
 void EncodingConverter::on_btnStart_clicked() {
     QString dstDirStr = ui.dstDirText->text().trimmed();
 
+    if (dstDirStr.isEmpty()) {
+        QMessageBox::warning(this, "è­¦å‘Š", "ç›®æ ‡æ–‡ä»¶å¤¹æœªæŒ‡å®š!");
+        return;
+    }
+
+    if (dstDirStr == ui.srcDirText->text()) {
+        QMessageBox::warning(this, "è­¦å‘Š", "ç›®æ ‡æ–‡ä»¶å¤¹å’Œæºæ–‡ä»¶å¤¹ç›¸åŒ!");
+        return;
+    }
+
+    // è·å–è¢«é€‰æ‹©çš„æ–‡ä»¶
     QModelIndexList selectedIndexes = selectionModel->selectedRows();
     if (selectedIndexes.empty()) {
-        QMessageBox::information(this, "ÌáÊ¾", "Ã»ÓĞÑ¡ÔñÒª×ª»»µÄÎÄ¼ş");
+        QMessageBox::information(this, "æç¤º", "æ²¡æœ‰é€‰æ‹©è¦è½¬æ¢çš„æ–‡ä»¶");
         return;
     }
 
     if (srcCodec == dstCodec) {
-        // ±àÂëÅĞ¶Ï·ÅÔÚÈ·±£ÓĞÎÄ¼şÖ®ºó¸üºÏÀí***important
-        QMessageBox::information(this, "ÌáÊ¾", "Ô´ÎÄ¼ş±àÂëºÍÄ¿±ê±àÂëÏàÍ¬£¬ÎŞĞè×ª»»!");
+        // ç¼–ç åˆ¤æ–­æ”¾åœ¨ç¡®ä¿æœ‰æ–‡ä»¶ä¹‹åæ›´åˆç†***important
+        QMessageBox::information(this, "æç¤º", "æºæ–‡ä»¶ç¼–ç å’Œç›®æ ‡ç¼–ç ç›¸åŒï¼Œæ— éœ€è½¬æ¢!");
         return;
     }
 
-    int failures = 0; // ×ª»»Ê§°ÜµÄ´ÎÊı
+    int cnt = selectedIndexes.count(); // é€‰æ‹©çš„æ–‡ä»¶çš„æ•°é‡
+    QStringList failures; // è½¬æ¢å¤±è´¥çš„æ–‡ä»¶çš„åç§°
     for (const QModelIndex& curIndex : selectedIndexes) {
-        if (model->isDir(curIndex)) // Ä¿Â¼²»ĞèÒª×ª»»
+        if (model->isDir(curIndex))
             continue;
-        QFile aFile(model->filePath(curIndex));
-        if (!aFile.exists() | !aFile.open(QIODevice::WriteOnly | QIODevice::Text))
-            continue; // Èç¹ûÎÄ¼ş´ò¿ªÊ§°Ü»òÕßÎÄ¼ş²»´æÔÚÔòÌø¹ı
-        QTextStream out(&aFile);
+        if (!saveFile(curIndex, dstDirStr))
+            failures.append(model->fileName(curIndex));
+    }
 
+    if (failures.empty()) {
+        QString text;
+        // error_1
+        // text += "è½¬æ¢æˆåŠŸï¼š\nå…±è½¬æ¢" + cnt + "ä¸ªæ–‡ä»¶";
+        // error_2
+        // text += "è½¬æ¢æˆåŠŸï¼š\nå…±è½¬æ¢" + cnt;
+        // text += "ä¸ªæ–‡ä»¶";
+
+        text += "è½¬æ¢æˆåŠŸï¼š\nå…±è½¬æ¢" + QString::number(cnt) + "ä¸ªæ–‡ä»¶";
+        QMessageBox::information(this, "æ¶ˆæ¯", text);
+    }
+    else {
+        QString text;
+        text += "è½¬åŒ–å¤±è´¥ï¼Œè½¬æ¢å¤±è´¥çš„æ–‡ä»¶å¦‚ä¸‹ï¼š\n";
+        foreach(const QString& str, failures) {
+            text += str + "\n";
+        }
+        QMessageBox::warning(this, "è­¦å‘Š", text);
     }
 }
 
 void EncodingConverter::on_cboDstEn_currentIndexChanged(int index) {
     dstCodec = static_cast<Codec>(ui.cboDstEn->currentIndex());
     QModelIndex curIndex = ui.treeView->currentIndex();
-    contentPreview(curIndex, false); // Ä¿±êÎÄ¼şÔ¤ÀÀ
+    contentPreview(curIndex, false); // ç›®æ ‡æ–‡ä»¶é¢„è§ˆ
 }
 
 void EncodingConverter::on_cboSrcEn_currentIndexChanged(int index) {
     srcCodec = static_cast<Codec>(ui.cboSrcEn->currentIndex());
     QModelIndex curIndex = ui.treeView->currentIndex();
-    contentPreview(curIndex, true); // Ô´ÎÄ¼şÔ¤ÀÀ
+    contentPreview(curIndex, true); // æºæ–‡ä»¶é¢„è§ˆ
 }
 
 bool EncodingConverter::contentPreview(const QModelIndex& fileIndex, bool isSrc) {
@@ -161,16 +205,16 @@ bool EncodingConverter::contentPreview(const QModelIndex& fileIndex, bool isSrc)
 
     QString filepath = model->filePath(fileIndex);
 
-    if (model->isDir(fileIndex)) // Èç¹ûÎÄ¼şÊ±Ä¿Â¼ÔòÌø¹ı£¬ÎÄ¼şÊÇ·ñ¿ÉÄÜ²»´æÔÚ?
+    if (model->isDir(fileIndex)) // å¦‚æœæ–‡ä»¶æ—¶ç›®å½•åˆ™è·³è¿‡ï¼Œæ–‡ä»¶æ˜¯å¦å¯èƒ½ä¸å­˜åœ¨?
         return false;
 
     QFile aFile(filepath);
 
     if (!aFile.open(QIODevice::ReadOnly | QIODevice::Text))
-        return false; // ´ò¿ªÎÄ¼şÊ§°ÜÖ±½Ó·µ»Ø
+        return false; // æ‰“å¼€æ–‡ä»¶å¤±è´¥ç›´æ¥è¿”å›
 
     QTextStream in(&aFile);
-    setCodec(in, true); // ÉèÖÃÎÄ¼ş×Ö·û¼¯
+    setCodec(in, true); // è®¾ç½®æ–‡ä»¶å­—ç¬¦é›†
 
     QTextEdit* targetEdit = nullptr;
     if (isSrc)
@@ -178,28 +222,28 @@ bool EncodingConverter::contentPreview(const QModelIndex& fileIndex, bool isSrc)
     else
         targetEdit = ui.dstPreview;
 
-    int lastPos = targetEdit->verticalScrollBar()->value(); // »ñµÃµ±Ç°¹ö¶¯ÌõÎ»ÖÃ
-    // Çå³ıÔ­À´µÄĞÅÏ¢
+    int lastPos = targetEdit->verticalScrollBar()->value(); // è·å¾—å½“å‰æ»šåŠ¨æ¡ä½ç½®
+    // æ¸…é™¤åŸæ¥çš„ä¿¡æ¯
     targetEdit->clear();
-    // ¸½¼ÓÄÚÈİ
+    // é™„åŠ å†…å®¹
     targetEdit->append(in.readAll());
-    targetEdit->verticalScrollBar()->setValue(lastPos); // »Øµ½ÉÏ´Îä¯ÀÀÎ»ÖÃ
+    targetEdit->verticalScrollBar()->setValue(lastPos); // å›åˆ°ä¸Šæ¬¡æµè§ˆä½ç½®
 
-    aFile.close(); // ÊÍ·Å×ÊÔ´
+    aFile.close(); // é‡Šæ”¾èµ„æº
     return true;
 }
 
-// Ñ¡ÔñÄ£ĞÍµÄ²Ûº¯Êı£¬µ±Ñ¡ÔñÄ³Ò»¸öÔ´ÎÄ¼şÊ±½«ÎÄ¼şµÄÄÚÈİÏÔÊ¾µ½ÎÄ±¾¿òÖĞÔ¤ÀÀ
+// é€‰æ‹©æ¨¡å‹çš„æ§½å‡½æ•°ï¼Œå½“é€‰æ‹©æŸä¸€ä¸ªæºæ–‡ä»¶æ—¶å°†æ–‡ä»¶çš„å†…å®¹æ˜¾ç¤ºåˆ°æ–‡æœ¬æ¡†ä¸­é¢„è§ˆ
 void EncodingConverter::when_currentRowChanged(const QModelIndex& current, const QModelIndex& previous) {
     Q_UNUSED(previous);
-    if (!current.isValid()) // ²»ÊÇÓĞĞ§µÄÄ£ĞÍË÷ÒıµÄÔòÖ±½Ó·µ»Ø
+    if (!current.isValid()) // ä¸æ˜¯æœ‰æ•ˆçš„æ¨¡å‹ç´¢å¼•çš„åˆ™ç›´æ¥è¿”å›
         return;
 
-    // Ô´ÎÄ¼şºÍÄ¿±êÎÄ¼şÍ¬Ê±Ô¤ÀÀ£¬Ä¬ÈÏ¶¼ÊÇGBK±àÂë
+    // æºæ–‡ä»¶å’Œç›®æ ‡æ–‡ä»¶åŒæ—¶é¢„è§ˆï¼Œé»˜è®¤éƒ½æ˜¯GBKç¼–ç 
     contentPreview(current, true);
     contentPreview(current, false);
 
-    // ÉèÖÃ´Ó¿ªÍ·ÏÔÊ¾
+    // è®¾ç½®ä»å¼€å¤´æ˜¾ç¤º
     ui.srcPreview->verticalScrollBar()->setValue(0);
     ui.dstPreview->verticalScrollBar()->setValue(0);
 }
